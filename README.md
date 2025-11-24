@@ -2,7 +2,8 @@
   <img src="https://img.shields.io/badge/Status-Active_Development-green" alt="status" />
 </p>
 
-# Aether Eye
+<h1 align="centre"># Aether Eye</h1>
+
 
 <p align="center">
   <strong>Hybrid-Edge Multi-Modal AIoT Surveillance System</strong>
