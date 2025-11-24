@@ -191,8 +191,8 @@ Distributed under the MIT License. See `LICENSE` for details.
 
 ## 📞 Contact
 
-Project Lead: Your Name
-GitHub: [https://github.com/your-username/aether-eye](https://github.com/your-username/aether-eye)
+Project Lead: Aryan Pratap Singh
+GitHub: [https://github.com/AryanSingh64/aether-eye](https://github.com/AryanSingh64/aether-eye)
 
 ---
 
