@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/AryanSingh64/Aether-Eye/blob/main/look.jpg" alt="Aether Eye hero" width="700" />
+  <img src="https://github.com/AryanSingh64/Aether-Eye/blob/main/look.jpg" alt="Aether Eye hero" width="500" />
 </p>
 
 ---
