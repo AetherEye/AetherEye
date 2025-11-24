@@ -2,7 +2,7 @@
   <img src="https://img.shields.io/badge/Status-Active_Development-green" alt="status" />
 </p>
 
-<h1 align="centre"># Aether Eye</h1>
+<h1 align="center">Aether Eye</h1>
 
 
 <p align="center">
