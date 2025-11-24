@@ -192,7 +192,8 @@ Distributed under the MIT License. See `LICENSE` for details.
 ## 📞 Contact
 
 Project Lead: Aryan Pratap Singh
-GitHub: [https://github.com/AryanSingh64/aether-eye](https://github.com/AryanSingh64/aether-eye)
+<br>
+GitHub: [https://github.com/AryanSingh64](https://github.com/AryanSingh64)
 
 ---
 
