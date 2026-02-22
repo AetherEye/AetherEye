@@ -22,7 +22,11 @@ def load_models():
         with open(Config.FACE_ENCODINGS_FILE, "rb") as f:
             KNOWN_FACES = pickle.load(f)
         print(f"✅ Loaded {len(KNOWN_FACES['names'])} faces")
-    except:
+    except FileNotFoundError:
+        print("⚠️ No face encodings file found, starting fresh.")
+        KNOWN_FACES = {"encodings": [], "names": []}
+    except Exception as e:
+        print(f"❌ Failed to load face encodings: {e}")
         KNOWN_FACES = {"encodings": [], "names": []}
 
     # 2. YOLO Standard
@@ -37,9 +41,12 @@ def load_models():
     try:
         yolo_custom = YOLO(Config.YOLO_CUSTOM_PATH)
         print("✅ YOLO Custom loaded")
-    except:
+    except FileNotFoundError:
         yolo_custom = None
-        print("⚠️ YOLO Custom not found")
+        print("⚠️ YOLO Custom model file not found")
+    except Exception as e:
+        yolo_custom = None
+        print(f"❌ YOLO Custom failed: {e}")
 
     # 4. Vosk
     try:
@@ -47,8 +54,11 @@ def load_models():
         SetLogLevel(-1)
         vosk_model = Model(Config.VOSK_MODEL_PATH)
         print("✅ Vosk loaded")
-    except:
+    except FileNotFoundError:
         vosk_model = None
-        print("⚠️ Vosk not found")
+        print("⚠️ Vosk model directory not found")
+    except Exception as e:
+        vosk_model = None
+        print(f"❌ Vosk failed: {e}")
 
     print("✨ READY")

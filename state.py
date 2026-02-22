@@ -15,5 +15,5 @@ prev_memory = {"people": [], "objects": {}}
 # Hardware State
 last_smoke_alert_time = 0
 last_hazard_alert_time = 0
-esp_l = None
-last_l = 0
+is_light_on = None
+last_light_switch_time = 0

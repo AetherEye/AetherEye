@@ -20,17 +20,18 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 
 @app.get("/")
-def h(): return {"status": "online"}
+def health_check():
+    return {"status": "online"}
 
 
 @app.get("/scan")
-def ms(bg: BackgroundTasks):
+def manual_scan(bg: BackgroundTasks):
     bg.add_task(scan_logic, is_auto=False)
     return {"status": "started"}
 
 
 @app.get("/status")
-def st():
+def get_status():
     return {
         "sentry": state.sentry_active,
         "auto_light": state.auto_light_active,
@@ -38,10 +39,10 @@ def st():
     }
 
 
-@app.api_route("/light/{a}", methods=["GET", "POST"])
-def lc(a: str):
-    success = control_light_hw(a == "on")
-    return {"status": "ok" if success else "err", "light": a}
+@app.api_route("/light/{action}", methods=["GET", "POST"])
+def light_control(action: str):
+    success = control_light_hw(action == "on")
+    return {"status": "ok" if success else "err", "light": action}
 
 
 @app.api_route("/sentry/{action}", methods=["GET", "POST"])
@@ -85,7 +86,8 @@ async def upload_face(name: str, files: list[UploadFile]):
 @app.delete("/faces/{name}")
 def delete_face(name: str):
     path = os.path.join(Config.KNOWN_FACES_DIR, name)
-    if os.path.exists(path): shutil.rmtree(path)
+    if os.path.exists(path):
+        shutil.rmtree(path)
     return {"status": "deleted", "person": name}
 
 
@@ -99,7 +101,8 @@ def train_faces():
 
     for person_name in os.listdir(Config.KNOWN_FACES_DIR):
         person_dir = os.path.join(Config.KNOWN_FACES_DIR, person_name)
-        if not os.path.isdir(person_dir): continue
+        if not os.path.isdir(person_dir):
+            continue
 
         print(f"📂 Processing folder: {person_name}")
         for file_name in os.listdir(person_dir):
@@ -112,15 +115,15 @@ def train_faces():
                         new_encodings.append(encs[0])
                         new_names.append(person_name)
                 except Exception as e:
-                    print(f"  ❌ Error: {e}")
+                    print(f"  ❌ Error processing {file_name}: {e}")
 
     data = {"encodings": new_encodings, "names": new_names}
     with open(Config.FACE_ENCODINGS_FILE, "wb") as f:
         pickle.dump(data, f)
 
     ai.load_models()
-    unique = len(set(new_names))
-    return {"status": "trained", "count": unique, "total_photos": len(new_encodings)}
+    unique_people = len(set(new_names))
+    return {"status": "trained", "count": unique_people, "total_photos": len(new_encodings)}
 
 
 def sentry_loop():
@@ -137,7 +140,7 @@ if __name__ == "__main__":
 
     ai.load_models()
 
-    for t in [sentry_loop, udp_mic_loop, udp_smoke_loop]:
-        threading.Thread(target=t, daemon=True).start()
+    for target_func in [sentry_loop, udp_mic_loop, udp_smoke_loop]:
+        threading.Thread(target=target_func, daemon=True).start()
 
     uvicorn.run(app, host="0.0.0.0", port=Config.SERVER_PORT, log_level="warning")

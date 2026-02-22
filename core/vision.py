@@ -24,11 +24,13 @@ class ObjectTracker:
         return int((box[0] + box[2]) / 2), int((box[1] + box[3]) / 2)
 
     def is_in_face_region(self, box):
-        if not Config.FACE_PRIORITY or not self.face_regions: return False
+        if not Config.FACE_PRIORITY or not self.face_regions:
+            return False
         x1, y1, x2, y2 = box
         for fx1, fy1, fx2, fy2 in self.face_regions:
             if not (x2 < (fx1 - Config.FACE_REGION_EXPAND) or x1 > (fx2 + Config.FACE_REGION_EXPAND) or y2 < (
-                    fy1 - Config.FACE_REGION_EXPAND) or y1 > (fy2 + Config.FACE_REGION_EXPAND)): return True
+                    fy1 - Config.FACE_REGION_EXPAND) or y1 > (fy2 + Config.FACE_REGION_EXPAND)):
+                return True
         return False
 
     def update(self, detections_by_class):
@@ -40,15 +42,14 @@ class ObjectTracker:
                 current_detections[cls].append(self.get_centroid(box))
 
         new_tracked_objects = defaultdict(list)
-        # ... (existing tracking logic preserved) ...
         for cls, old_objects in self.tracked_objects.items():
             for old_obj in old_objects:
                 matched = False
                 if cls in current_detections:
-                    for i, new_cent in enumerate(current_detections[cls]):
-                        distance = np.linalg.norm(np.array(old_obj["centroid"]) - np.array(new_cent))
+                    for i, new_centroid in enumerate(current_detections[cls]):
+                        distance = np.linalg.norm(np.array(old_obj["centroid"]) - np.array(new_centroid))
                         if distance < Config.SPATIAL_CLUSTERING_DISTANCE:
-                            old_obj["centroid"] = new_cent
+                            old_obj["centroid"] = new_centroid
                             old_obj["count"] += 1
                             old_obj["age"] = 0
                             new_tracked_objects[cls].append(old_obj)
@@ -59,9 +60,9 @@ class ObjectTracker:
                     old_obj["age"] += 1
                     if old_obj["age"] < Config.MAX_TRACK_AGE:
                         new_tracked_objects[cls].append(old_obj)
-        for cls, new_cents in current_detections.items():
-            for cent in new_cents:
-                new_tracked_objects[cls].append({"centroid": cent, "count": 1, "age": 0})
+        for cls, new_centroids in current_detections.items():
+            for centroid in new_centroids:
+                new_tracked_objects[cls].append({"centroid": centroid, "count": 1, "age": 0})
         self.tracked_objects = dict(new_tracked_objects)
 
     def get_stable(self):
@@ -72,144 +73,163 @@ class ObjectTracker:
 def draw_label(frame, label, box, color):
     text_y = max(int(box[1]) - 10, 20)
     cv2.rectangle(frame, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), color, 2)
-    (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-    cv2.rectangle(frame, (int(box[0]), text_y - h - 5), (int(box[0]) + w, text_y + 5), color, -1)
+    (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+    cv2.rectangle(frame, (int(box[0]), text_y - text_height - 5), (int(box[0]) + text_width, text_y + 5), color, -1)
     cv2.putText(frame, label, (int(box[0]), text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
 
-def rec_face(frame, box):
-    if not ai.KNOWN_FACES['encodings']: return "Unknown"
+def recognize_face(frame, box):
+    if not ai.KNOWN_FACES['encodings']:
+        return "Unknown"
     x1, y1, x2, y2 = map(int, box)
-    h, w, _ = frame.shape
-    person_crop = frame[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
-    if person_crop.size == 0: return "Unknown"
+    height, width, _ = frame.shape
+    person_crop = frame[max(0, y1):min(height, y2), max(0, x1):min(width, x2)]
+    if person_crop.size == 0:
+        return "Unknown"
     try:
         rgb = cv2.cvtColor(person_crop, cv2.COLOR_BGR2RGB)
         face_locations = face_recognition.face_locations(rgb, model="hog")
-        if not face_locations: return "Unknown"
+        if not face_locations:
+            return "Unknown"
         encodings = face_recognition.face_encodings(rgb, known_face_locations=face_locations)
         if encodings:
             matches = face_recognition.compare_faces(ai.KNOWN_FACES['encodings'], encodings[0],
                                                      tolerance=Config.FACE_CONF)
             if True in matches:
                 return ai.KNOWN_FACES['names'][matches.index(True)]
-    except:
-        pass
+    except Exception as e:
+        print(f"⚠️ Face recognition error: {e}")
     return "Unknown"
 
 
-def gen_summary(ppl, objs, light, all_hazards=None, full=False):
-    k = [p for p in ppl if p != "Unknown"]
-    u = ppl.count("Unknown")
-    c = {k: len(v) for k, v in objs.items() if v}
-    crit_stable = {x for x in c if x in Config.HAZARD_LIST}
-    crit_all = all_hazards or set()
-    all_critical = crit_stable.union(crit_all)
+def generate_summary(people_list, stable_objects, light_on, all_hazards=None, full=False):
+    known_people = [person for person in people_list if person != "Unknown"]
+    unknown_count = people_list.count("Unknown")
+    object_counts = {k: len(v) for k, v in stable_objects.items() if v}
+    critical_stable = {obj_name for obj_name in object_counts if obj_name in Config.HAZARD_LIST}
+    critical_all = all_hazards or set()
+    all_critical = critical_stable.union(critical_all)
 
-    p = []
-    if all_critical: p.append(f"ALERT! I see {' and '.join(all_critical)}.")
-    if u: p.append(f"Warning, {u} unknown person.")
+    phrases = []
+    if all_critical:
+        phrases.append(f"ALERT! I see {' and '.join(all_critical)}.")
+    if unknown_count:
+        phrases.append(f"Warning, {unknown_count} unknown person.")
 
     if full:
-        if k: p.append(f"I see {' and '.join(k)}.")
-        if c:
-            d = [f"{len(v)} {k}{'s' if len(v) > 1 else ''}" for k, v in objs.items() if
+        if known_people:
+            phrases.append(f"I see {' and '.join(known_people)}.")
+        if object_counts:
+            descriptions = [f"{len(v)} {k}{'s' if len(v) > 1 else ''}" for k, v in stable_objects.items() if
                  v and k not in Config.PERSON_ALIASES and k not in all_critical]
-            if d: p.append(f"Objects: {', '.join(d[:5])}.")
-        if not (all_critical or u or k or c): p.append("Room is empty.")
-        p.append(f"Light is {'on' if light else 'off'}.")
-    elif not all_critical and u == 0 and [x for x in k if x not in state.prev_memory["people"]]:
-        p.append(f"{' and '.join(k)} arrived.")
+            if descriptions:
+                phrases.append(f"Objects: {', '.join(descriptions[:5])}.")
+        if not (all_critical or unknown_count or known_people or object_counts):
+            phrases.append("Room is empty.")
+        phrases.append(f"Light is {'on' if light_on else 'off'}.")
+    elif not all_critical and unknown_count == 0 and [person for person in known_people if person not in state.prev_memory["people"]]:
+        phrases.append(f"{' and '.join(known_people)} arrived.")
 
-    state.prev_memory["people"] = k
-    return " ".join(p)
+    state.prev_memory["people"] = known_people
+    return " ".join(phrases)
 
 
 def scan_logic(is_auto=False):
     cap = cv2.VideoCapture(Config.CAM_SOURCE)
     if not cap.isOpened():
         print("❌ Cam offline")
-        speak("Camera offline.") if not is_auto else None
+        if not is_auto:
+            speak("Camera offline.")
         return
 
     print(f"👀 Scanning...")
     tracker = ObjectTracker()
-    p_ids = {}
-    fc = 0
-    start = time.time()
-    all_hazards_seen_this_scan = set()
+    person_ids = {}
+    frame_count = 0
+    start_time = time.time()
+    all_hazards_seen = set()
 
     try:
-        while time.time() - start < Config.SCAN_DURATION:
-            suc, frame = cap.read()
-            if not suc: time.sleep(0.1); continue
-            fc += 1
+        while time.time() - start_time < Config.SCAN_DURATION:
+            success, frame = cap.read()
+            if not success:
+                time.sleep(0.1)
+                continue
+            frame_count += 1
 
             if Config.BRIGHTNESS_BOOST:
                 frame = cv2.convertScaleAbs(frame, alpha=Config.BRIGHTNESS_ALPHA, beta=Config.BRIGHTNESS_BETA)
 
             # Light Logic
-            nl = np.mean(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)[:, :, 2]) < Config.LIGHT_THRESHOLD
-            if state.auto_light_active and nl != state.esp_l and (
-                    time.time() - state.last_l > Config.LIGHT_SWITCH_COOLDOWN):
-                control_light_hw(nl)
-                state.esp_l, state.last_l = nl, time.time()
-            if state.esp_l is None: state.esp_l = nl
+            needs_light = np.mean(cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)[:, :, 2]) < Config.LIGHT_THRESHOLD
+            if state.auto_light_active and needs_light != state.is_light_on and (
+                    time.time() - state.last_light_switch_time > Config.LIGHT_SWITCH_COOLDOWN):
+                control_light_hw(needs_light)
+                state.is_light_on = needs_light
+                state.last_light_switch_time = time.time()
+            if state.is_light_on is None:
+                state.is_light_on = needs_light
 
-            dets = defaultdict(list)
-            f_boxes = []
+            detections = defaultdict(list)
+            face_boxes = []
 
             # Standard Model
             if ai.yolo_std:
                 results = ai.yolo_std.track(frame, persist=True, classes=ai.STD_CLASSES_ID, conf=Config.STD_CONF,
                                             verbose=False)
-                for b in results[0].boxes:
-                    n, box = ai.yolo_std.names[int(b.cls[0])], b.xyxy[0].cpu().numpy().tolist()
-                    if n in Config.PERSON_ALIASES and b.id is not None:
-                        tid = int(b.id[0])
-                        if tid not in p_ids or fc % 15 == 0:
-                            pid = rec_face(frame, box)
-                            p_ids[tid] = pid
-                            if pid != "Unknown": f_boxes.append(box)
-                        draw_label(frame, p_ids[tid], box, (0, 255, 0))
+                for box_data in results[0].boxes:
+                    class_name = ai.yolo_std.names[int(box_data.cls[0])]
+                    box_coords = box_data.xyxy[0].cpu().numpy().tolist()
+                    if class_name in Config.PERSON_ALIASES and box_data.id is not None:
+                        track_id = int(box_data.id[0])
+                        if track_id not in person_ids or frame_count % 15 == 0:
+                            person_name = recognize_face(frame, box_coords)
+                            person_ids[track_id] = person_name
+                            if person_name != "Unknown":
+                                face_boxes.append(box_coords)
+                        draw_label(frame, person_ids[track_id], box_coords, (0, 255, 0))
                     else:
-                        dets[n].append(box)
-                        draw_label(frame, n, box, (255, 0, 0))
+                        detections[class_name].append(box_coords)
+                        draw_label(frame, class_name, box_coords, (255, 0, 0))
 
             # Custom Model
             if ai.yolo_custom:
                 results = ai.yolo_custom.track(frame, persist=True, conf=Config.CUSTOM_CONF, verbose=False)
-                for b in results[0].boxes:
-                    n, box = ai.yolo_custom.names[int(b.cls[0])], b.xyxy[0].cpu().numpy().tolist()
-                    dets[n].append(box)
-                    draw_label(frame, n, box, (0, 0, 255))
+                for box_data in results[0].boxes:
+                    class_name = ai.yolo_custom.names[int(box_data.cls[0])]
+                    box_coords = box_data.xyxy[0].cpu().numpy().tolist()
+                    detections[class_name].append(box_coords)
+                    draw_label(frame, class_name, box_coords, (0, 0, 255))
 
-            current_hazards = {k for k in dets if k in Config.HAZARD_LIST}
+            current_hazards = {name for name in detections if name in Config.HAZARD_LIST}
             if current_hazards:
-                all_hazards_seen_this_scan.update(current_hazards)
+                all_hazards_seen.update(current_hazards)
                 if time.time() - state.last_hazard_alert_time > Config.HAZARD_ALERT_COOLDOWN:
                     alert_text = f"ALERT! I see {' and '.join(current_hazards)}."
                     print(f"🚨 {alert_text}")
                     speak(alert_text)
                     state.last_hazard_alert_time = time.time()
 
-            tracker.set_face_regions(f_boxes)
-            tracker.update(dets)
+            tracker.set_face_regions(face_boxes)
+            tracker.update(detections)
             cv2.imshow("AetherEye", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'): break
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
     finally:
         cap.release()
         cv2.destroyAllWindows()
 
     stable_objects = tracker.get_stable()
-    summ = gen_summary(list(set(p_ids.values())), stable_objects, not state.esp_l, all_hazards_seen_this_scan,
-                       full=not is_auto)
+    summary = generate_summary(
+        list(set(person_ids.values())), stable_objects,
+        not state.is_light_on, all_hazards_seen, full=not is_auto
+    )
 
-    if summ:
+    if summary:
         state.latest_result = {
-            "text": summ,
+            "text": summary,
             "timestamp": datetime.now().strftime("%H:%M:%S"),
-            "light": "on" if not state.esp_l else "off"
+            "light": "on" if not state.is_light_on else "off"
         }
-        print(f"📝 {summ}")
-        speak(summ)
+        print(f"📝 {summary}")
+        speak(summary)

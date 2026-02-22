@@ -1,16 +1,18 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Config:
     # ================== NETWORK ==================
-    # Your explicit IPs
-    ESP32_CAM_IP = "10.239.67.247"
-    ESP32_WROOM_IP = "10.239.67.196"
+    ESP32_CAM_IP = os.getenv("ESP32_CAM_IP", "192.168.1.100")
+    ESP32_WROOM_IP = os.getenv("ESP32_WROOM_IP", "192.168.1.101")
 
-    SERVER_PORT = 5000
-    MIC_UDP_PORT = 4444
-    SPK_UDP_PORT = 5555
-    SMOKE_UDP_PORT = 6666
+    SERVER_PORT = int(os.getenv("SERVER_PORT", "5000"))
+    MIC_UDP_PORT = int(os.getenv("MIC_UDP_PORT", "4444"))
+    SPK_UDP_PORT = int(os.getenv("SPK_UDP_PORT", "5555"))
+    SMOKE_UDP_PORT = int(os.getenv("SMOKE_UDP_PORT", "6666"))
 
     # ================== URLS ==================
     CAM_SOURCE = f"http://{ESP32_CAM_IP}:81/stream"
@@ -36,7 +38,6 @@ class Config:
     BRIGHTNESS_BETA = 12
 
     # ================== AI MODELS ==================
-    # Paths (calculated relative to this config file)
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     KNOWN_FACES_DIR = os.path.join(BASE_DIR, "known_faces")
     FACE_ENCODINGS_FILE = os.path.join(BASE_DIR, "face_encodings.pkl")

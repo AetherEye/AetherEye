@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+ultralytics
+vosk
+face_recognition
+edge-tts
+pyttsx3
+fuzzywuzzy
+pydub
+scipy
+requests
+opencv-python
+numpy
+python-dotenv

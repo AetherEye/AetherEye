@@ -28,67 +28,71 @@ def stream_to_esp32(filename):
         audio = normalize(audio)
         audio = audio + Config.MASTER_VOLUME_DB
 
-        raw = audio.set_frame_rate(Config.SPK_SAMPLE_RATE).set_channels(1).set_sample_width(2).raw_data
+        raw_data = audio.set_frame_rate(Config.SPK_SAMPLE_RATE).set_channels(1).set_sample_width(2).raw_data
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         bytes_per_second = Config.SPK_SAMPLE_RATE * 2
-        chunk_play_duration_sec = Config.SPK_CHUNK_SIZE / bytes_per_second
-        sleep_t = max(0.005, chunk_play_duration_sec * 0.8)
+        chunk_play_duration = Config.SPK_CHUNK_SIZE / bytes_per_second
+        sleep_time = max(0.005, chunk_play_duration * 0.8)
 
-        for i in range(0, len(raw), Config.SPK_CHUNK_SIZE):
-            if not Config.ESP32_WROOM_IP: break
-            sock.sendto(raw[i:i + Config.SPK_CHUNK_SIZE], (Config.ESP32_WROOM_IP, Config.SPK_UDP_PORT))
-            time.sleep(sleep_t)
+        for i in range(0, len(raw_data), Config.SPK_CHUNK_SIZE):
+            if not Config.ESP32_WROOM_IP:
+                break
+            sock.sendto(raw_data[i:i + Config.SPK_CHUNK_SIZE], (Config.ESP32_WROOM_IP, Config.SPK_UDP_PORT))
+            time.sleep(sleep_time)
         sock.close()
     except Exception as e:
         print(f"❌ Stream Error: {e}")
 
 
 def speak(text):
-    if not text.strip(): return
+    if not text.strip():
+        return
     print(f"🤖 Speaking: {text}")
 
-    def _t():
+    def _speak_thread():
         with state.speaking_lock:
             state.is_speaking = True
 
-        tf = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        tf.close()
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        temp_file.close()
         try:
-            asyncio.run(edge_tts.Communicate(text, Config.EDGE_VOICE, rate="+10%").save(tf.name))
-            stream_to_esp32(tf.name)
-        except:
+            asyncio.run(edge_tts.Communicate(text, Config.EDGE_VOICE, rate="+10%").save(temp_file.name))
+            stream_to_esp32(temp_file.name)
+        except Exception as e:
+            print(f"⚠️ Edge TTS failed, falling back to pyttsx3: {e}")
             try:
-                eng = pyttsx3.init()
-                wav = tf.name + ".wav"
-                eng.save_to_file(text, wav)
-                eng.runAndWait()
-                stream_to_esp32(wav)
-                os.remove(wav)
-            except:
-                pass
+                engine = pyttsx3.init()
+                wav_path = temp_file.name + ".wav"
+                engine.save_to_file(text, wav_path)
+                engine.runAndWait()
+                stream_to_esp32(wav_path)
+                os.remove(wav_path)
+            except Exception as e2:
+                print(f"❌ pyttsx3 fallback also failed: {e2}")
         finally:
             try:
-                os.remove(tf.name)
-            except:
+                os.remove(temp_file.name)
+            except OSError:
                 pass
             time.sleep(0.5)
             with state.speaking_lock:
                 state.is_speaking = False
 
-    threading.Thread(target=_t, daemon=True).start()
+    threading.Thread(target=_speak_thread, daemon=True).start()
 
 
-def handle_voice(txt):
+def handle_voice(text):
     # Lazy import to avoid circular dependency
     from core.vision import scan_logic
 
-    if not txt: return
+    if not text:
+        return
     try:
-        scan_score = process.extractOne(txt, Config.SCAN_TRIGGERS, scorer=fuzz.token_set_ratio)[1]
-        on_score = process.extractOne(txt, Config.LIGHT_ON_TRIGGERS, scorer=fuzz.token_set_ratio)[1]
-        off_score = process.extractOne(txt, Config.LIGHT_OFF_TRIGGERS, scorer=fuzz.token_set_ratio)[1]
-        scores = {"scan": scan_score, "on": on_score, "off": off_score}
+        scan_score = process.extractOne(text, Config.SCAN_TRIGGERS, scorer=fuzz.token_set_ratio)[1]
+        light_on_score = process.extractOne(text, Config.LIGHT_ON_TRIGGERS, scorer=fuzz.token_set_ratio)[1]
+        light_off_score = process.extractOne(text, Config.LIGHT_OFF_TRIGGERS, scorer=fuzz.token_set_ratio)[1]
+        scores = {"scan": scan_score, "on": light_on_score, "off": light_off_score}
         best_match = max(scores, key=scores.get)
 
         if scores[best_match] > 65:
@@ -106,16 +110,17 @@ def handle_voice(txt):
 
 
 def udp_mic_loop():
-    if not vosk_model: return
+    if not vosk_model:
+        return
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", Config.MIC_UDP_PORT))
-    rec = KaldiRecognizer(vosk_model, 16000)
+    recognizer = KaldiRecognizer(vosk_model, 16000)
     print(f"👂 Mic Listener on {Config.MIC_UDP_PORT}")
 
     while True:
         try:
             data, _ = sock.recvfrom(4096)
-            is_final = rec.AcceptWaveform(data)
+            is_final = recognizer.AcceptWaveform(data)
 
             is_currently_speaking = False
             with state.speaking_lock:
@@ -123,11 +128,12 @@ def udp_mic_loop():
 
             if is_final:
                 if is_currently_speaking:
-                    rec.Result()  # Flush buffer
+                    recognizer.Result()  # Flush buffer
                 else:
-                    txt = json.loads(rec.Result()).get('text', '').strip()
-                    if txt:
-                        print(f"🗣️ Voice: {txt}")
-                        handle_voice(txt)
-        except:
-            pass
+                    recognized_text = json.loads(recognizer.Result()).get('text', '').strip()
+                    if recognized_text:
+                        print(f"🗣️ Voice: {recognized_text}")
+                        handle_voice(recognized_text)
+        except Exception as e:
+            print(f"❌ Mic loop error: {e}")
+            time.sleep(1)
