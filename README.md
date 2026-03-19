@@ -6,7 +6,7 @@
 
 
 <p align="center">
-  <strong>Hybrid-Edge Multi-Modal AIoT Surveillance System</strong>
+  <strong>Hybrid-Edge Multi-Modal IoT Surveillance System</strong>
 </p>
 
 <p align="center">
