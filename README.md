@@ -4,7 +4,6 @@
 
 <h1 align="center">Aether Eye</h1>
 
-
 <p align="center">
   <strong>Hybrid-Edge Multi-Modal IoT Surveillance System</strong>
 </p>
@@ -189,12 +188,27 @@ Thanks for your interest in contributing. Quick workflow:
 
 Distributed under the MIT License. See `LICENSE` for details.
 
+## 👥 Contributors
+
+| Name | GitHub |
+| ---- | ------ |
+| Aryan Pratap Singh | [@AryanSingh64](https://github.com/AryanSingh64) |
+| Karan Pratap Singh | [@KaranPratapSingh](https://github.com/KaranPratapSingh) |
+| Aryan Kumar | [@AryanKumar](https://github.com/AryanKumar) |
+| Aman Gupta | [@AmanGupta](https://github.com/AmanGupta) |
+
 ## 📞 Contact
 
-Project Lead: Aryan Pratap Singh
+Feel free to reach out to any of the contributors:
+
+**Aryan Pratap Singh** — GitHub: [AryanSingh64](https://github.com/AryanSingh64)
 <br>
-GitHub: [https://github.com/AryanSingh64](https://github.com/AryanSingh64)
+**Karan Pratap Singh** — GitHub: [KaranPratapSingh](https://github.com/SypherKx)
+<br>
+**Aryan Kumar** — GitHub: [AryanKumar](https://github.com/aryankumarx)
+<br>
+**Aman Gupta** — GitHub: [AmanGupta](https://github.com/AmanGupta)
 
 ---
 
-> Built with passion and a focus on privacy and real-time safety.
+> Built with passion by Aryan Pratap Singh, Karan Pratap Singh, Aryan Kumar & Aman Gupta — focused on privacy and real-time safety.
