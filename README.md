@@ -168,12 +168,6 @@ aether-eye/
 * For MQ-2 triggers, use a controlled test source like a lighter flame at a safe distance to observe alerts.
 * Disable internet on one test device to verify offline voice commands still work.
 
-## 🎨 Visuals & UI Suggestions
-
-* Hero screenshot: `assets/hero.png` (replace with a real app screenshot)
-* Add animated GIF showing live bounding boxes for a nicer project page
-* Use GitHub Pages or a short Loom demo for a polished demo link
-
 ## 🤝 Contributing
 
 Thanks for your interest in contributing. Quick workflow:
